@@ -1,0 +1,159 @@
+.rawg-layout {
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+}
+
+.rawg-layout__main {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  max-width: 72rem;
+  flex: 1;
+  padding: 1.5rem 1rem;
+}
+
+.rawg-layout__main--home {
+  max-width: none;
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.rawg-layout__main--home .rawg-home__catalog {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1rem 1.5rem;
+}
+
+.rawg-layout__main--detail {
+  max-width: none;
+  padding: 0;
+}
+
+.rawg-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--border);
+  background: var(--background);
+}
+
+.rawg-nav__inner {
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  max-width: 72rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.rawg-nav__brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.rawg-nav__brand:hover {
+  color: var(--primary);
+}
+
+.rawg-nav__links {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.rawg-nav__link {
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+
+.rawg-nav__link:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.rawg-nav__link--active {
+  background: color-mix(in oklch, var(--primary) 15%, transparent);
+  color: var(--primary);
+}
+
+.rawg-nav__search {
+  order: 3;
+  display: flex;
+  min-width: 14rem;
+  flex: 1;
+  flex-basis: 100%;
+}
+
+@media (min-width: 640px) {
+  .rawg-nav__search {
+    order: unset;
+    margin-left: auto;
+    max-width: 20rem;
+    flex-basis: auto;
+  }
+}
+
+.rawg-nav__search-input {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--input);
+  background: var(--background);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+.rawg-nav__theme-btn {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  cursor: pointer;
+}
+
+.rawg-nav__theme-btn:hover {
+  background: var(--accent);
+}
+
+.rawg-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: var(--muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.rawg-footer__inner {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 72rem;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}

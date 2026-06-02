@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { toast } from 'sonner'
+import { toast } from 'react-toastify'
 import {
   type FavoriteGame,
   loadFavoritesFromStorage,
@@ -43,12 +43,12 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       if (exists) {
         const next = favorites.filter((entry) => entry.id !== game.id)
         persist(next)
-        toast.success(`${game.name} retiré des favoris`)
+        toast.info(`${game.name} retire des favoris`)
         return
       }
 
       persist([...favorites, game])
-      toast.success(`${game.name} ajouté aux favoris`)
+      toast.success(`${game.name} ajoute aux favoris`)
     },
     [favorites, persist],
   )
@@ -62,7 +62,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
       const next = favorites.filter((entry) => entry.id !== id)
       persist(next)
-      toast.success(`${game.name} retiré des favoris`)
+      toast.info(`${game.name} retire des favoris`)
     },
     [favorites, persist],
   )
@@ -87,7 +87,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 export function useFavorites(): FavoritesContextValue {
   const context = useContext(FavoritesContext)
   if (!context) {
-    throw new Error('useFavorites doit être utilisé dans un FavoritesProvider')
+    throw new Error('useFavorites doit etre utilise dans un FavoritesProvider')
   }
   return context
 }

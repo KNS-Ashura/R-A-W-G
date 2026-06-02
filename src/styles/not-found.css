@@ -1,0 +1,32 @@
+.rawg-not-found {
+  padding: 2rem 0;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .rawg-not-found {
+    text-align: left;
+  }
+}
+
+.rawg-not-found__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.rawg-not-found__text {
+  margin-top: 0.5rem;
+  color: var(--muted-foreground);
+}
+
+.rawg-not-found__link {
+  display: inline-block;
+  margin-top: 1rem;
+  font-weight: 500;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.rawg-not-found__link:hover {
+  text-decoration: underline;
+}

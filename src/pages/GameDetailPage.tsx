@@ -1,292 +1,398 @@
-import { ArrowLeft, AlertCircle, Calendar, Clock, Star } from 'lucide-react'
-import { FavoriteButton } from '@/components/FavoriteButton'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ApiError } from '@/api/client'
-import { countRelatedNodes } from '@/api/games.mapper'
-import type { GameDetail } from '@/api/types'
+import { ArrowLeft, AlertCircle, Clock, Star } from 'lucide-react'
+import { FavoriteButton } from '@/components/FavoriteButton'
+import { HeroBackground } from '@/components/HeroBackground'
+import { GameRequirementsPanel } from '@/components/GameRequirementsPanel'
+import { GameScreenshotGallery } from '@/components/GameScreenshotGallery'
+import { MetacriticBadge } from '@/components/MetacriticBadge'
 import { RelatedGamesTree } from '@/components/RelatedGamesTree'
 import { SuggestedGamesGrid } from '@/components/SuggestedGamesGrid'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
+import { countRelatedNodes } from '@/services/games.mapper'
+import { ApiError } from '@/services/http'
+import type { GameDetail } from '@/services/types'
 import { useGameDetail } from '@/hooks/useGameDetail'
-import {
-  formatReleaseDate,
-  getGenreBadgeClass,
-  getRatingLabel,
-  MAX_RATING_STAT_VALUE,
-} from '@/lib/gameLabels'
+import { formatReleaseDate } from '@/lib/gameLabels'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-function GameDetailSkeleton() {
+const DESCRIPTION_PREVIEW = 520
+const TAGS_PREVIEW = 12
+
+function AchievementBar({
+  name,
+  description,
+  percent,
+}: {
+  name: string
+  description: string
+  percent: number
+}) {
   return (
-    <div className="space-y-6">
-      <Skeleton className="h-9 w-32" />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 pt-6">
-            <Skeleton className="aspect-video w-full rounded-xl" />
-            <Skeleton className="h-8 w-40" />
-            <div className="flex gap-2">
-              <Skeleton className="h-6 w-16 rounded-full" />
-              <Skeleton className="h-6 w-16 rounded-full" />
-            </div>
-          </CardContent>
-        </Card>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-28" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-            </CardContent>
-          </Card>
-        </div>
+    <article className="rawg-achievement">
+      <div className="rawg-achievement__header">
+        <span className="rawg-achievement__name">{name}</span>
+        <span className="rawg-achievement__percent">{percent.toFixed(1)} %</span>
       </div>
-    </div>
+      <progress
+        className="rawg-achievement__progress"
+        value={Math.min(100, percent)}
+        max={100}
+        aria-label={`Progression ${name}`}
+      />
+      {description && <p className="rawg-achievement__desc">{description}</p>}
+    </article>
   )
 }
 
-function GameDetailContent({ game }: { game: GameDetail }) {
-  const maxStat = Math.max(
-    ...game.ratingStats.map((s) => s.value),
-    MAX_RATING_STAT_VALUE,
-  )
-  const hasAdditions =
-    game.additionsTree && countRelatedNodes(game.additionsTree) > 1
+function GameDetailView({ game }: { game: GameDetail }) {
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [tagsExpanded, setTagsExpanded] = useState(false)
+
+  const hasDlcTree =
+    game.additionsTree !== null && countRelatedNodes(game.additionsTree) > 1
+  const hasUniverseList = game.universeGames.length > 0
+  const treeNodeCount = game.additionsTree
+    ? countRelatedNodes(game.additionsTree)
+    : 0
+  const showUniverseGrid =
+    hasUniverseList &&
+    (!hasDlcTree || game.universeGames.length > treeNodeCount)
+  const hasDlc = hasDlcTree || hasUniverseList
   const hasSuggested = game.suggestedGames.length > 0
 
+  const heroImage = game.heroImageUrl ?? game.imageUrl
+  const descriptionLong = game.description.length > DESCRIPTION_PREVIEW
+  const visibleDescription =
+    descriptionExpanded || !descriptionLong
+      ? game.description
+      : `${game.description.slice(0, DESCRIPTION_PREVIEW).trim()}…`
+  const visibleTags = tagsExpanded ? game.tags : game.tags.slice(0, TAGS_PREVIEW)
+
   return (
-    <div className="space-y-6">
-      <Link
-        to="/games"
-        className={cn(
-          buttonVariants({ variant: 'ghost', size: 'sm' }),
-          '-ml-2 inline-flex w-fit items-center gap-1.5',
-        )}
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        Retour au catalogue
-      </Link>
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
-        <Card className="h-fit">
-          <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
-            {game.imageUrl ? (
-              <img
-                src={game.imageUrl}
-                alt={game.name}
-                className="aspect-video w-full rounded-xl object-cover"
-                width={320}
-                height={180}
-              />
-            ) : (
-              <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                Pas d&apos;image
-              </div>
+    <article className="rawg-detail">
+      <header className="rawg-detail__hero">
+        {heroImage && <HeroBackground imageUrl={heroImage} />}
+        <div className="rawg-detail__hero-overlay" />
+        <div className="rawg-detail__hero-inner">
+          <Link
+            to="/games"
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'sm' }),
+              'rawg-detail__back',
             )}
-            <div className="flex w-full items-start justify-center gap-2">
-              <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  {game.name}
-                </h1>
-                <p className="text-sm text-muted-foreground">#{game.id}</p>
-              </div>
-              <FavoriteButton
-                game={{
-                  id: game.id,
-                  name: game.name,
-                  imageUrl: game.imageUrl,
-                }}
-                className="mt-1 shrink-0"
-              />
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {game.genres.map((genre) => (
-                <Badge
-                  key={genre}
-                  variant="secondary"
-                  className={cn('genre-badge', getGenreBadgeClass(genre.toLowerCase().replace(/\s+/g, '-')))}
-                >
-                  {genre}
-                </Badge>
-              ))}
-            </div>
-            <Separator className="w-full" />
-            <dl className="grid w-full grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
-                <Star className="size-4 text-muted-foreground" aria-hidden />
-                <div className="text-left">
-                  <dt className="text-muted-foreground">Note</dt>
-                  <dd className="font-medium">
-                    {game.rating.toFixed(1)} ({game.ratingsCount} avis)
-                  </dd>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
-                <Calendar className="size-4 text-muted-foreground" aria-hidden />
-                <div className="text-left">
-                  <dt className="text-muted-foreground">Sortie</dt>
-                  <dd className="font-medium">
-                    {formatReleaseDate(game.released)}
-                  </dd>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
-                <Clock className="size-4 text-muted-foreground" aria-hidden />
-                <div className="text-left">
-                  <dt className="text-muted-foreground">Durée moy.</dt>
-                  <dd className="font-medium">{game.playtime} h</dd>
-                </div>
-              </div>
-              {game.metacritic !== null && (
-                <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
-                  <span
-                    className="flex size-4 items-center justify-center text-xs font-bold text-muted-foreground"
-                    aria-hidden
-                  >
-                    M
-                  </span>
-                  <div className="text-left">
-                    <dt className="text-muted-foreground">Metacritic</dt>
-                    <dd className="font-medium">{game.metacritic}</dd>
-                  </div>
-                </div>
-              )}
-            </dl>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Description</CardTitle>
-              <CardDescription>Résumé du jeu</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {game.description}
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            Retour au catalogue
+          </Link>
+          <div className="rawg-detail__hero-content">
+            {game.genres.length > 0 && (
+              <p className="rawg-detail__hero-genres">
+                {game.genres.join(' · ')}
               </p>
-            </CardContent>
-          </Card>
+            )}
+            <h1 className="rawg-detail__hero-title">{game.name}</h1>
+          </div>
+        </div>
+      </header>
 
-          {game.ratingStats.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Répartition des notes</CardTitle>
-                <CardDescription>
-                  Total :{' '}
-                  <span className="font-medium text-foreground">
-                    {game.ratingStatsTotal}
-                  </span>{' '}
-                  avis détaillés
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {game.ratingStats.map((stat) => (
-                  <Progress
-                    key={stat.name}
-                    value={Math.round((stat.value / maxStat) * 100)}
-                  >
-                    <ProgressLabel>
-                      {getRatingLabel(stat.name)} — {stat.value}
-                    </ProgressLabel>
-                    <ProgressValue />
-                  </Progress>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+      <div className="rawg-detail__body">
+        <div className="rawg-detail__layout">
+          <div className="rawg-detail__main">
+            <section className="rawg-detail__panel">
+              <h2 className="rawg-detail__panel-title">A propos</h2>
+              <p className="rawg-detail__description">{visibleDescription}</p>
+              {descriptionLong && (
+                <button
+                  type="button"
+                  className="rawg-detail__expand-btn"
+                  onClick={() => setDescriptionExpanded((value) => !value)}
+                >
+                  {descriptionExpanded ? 'Reduire' : 'Lire la suite'}
+                </button>
+              )}
+            </section>
 
-          {(hasAdditions || hasSuggested) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Univers du jeu</CardTitle>
-                <CardDescription>
-                  DLC, extensions et jeux proches de cette licence
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                {hasAdditions && game.additionsTree && (
-                  <section aria-labelledby="additions-heading">
-                    <h3
-                      id="additions-heading"
-                      className="mb-4 text-sm font-semibold text-foreground"
-                    >
-                      DLC & extensions
+            <GameScreenshotGallery
+              gameName={game.name}
+              screenshots={game.screenshots}
+              totalCount={game.screenshotsTotal}
+            />
+
+            {game.trailerUrl && (
+              <section className="rawg-detail__panel">
+                <h2 className="rawg-detail__panel-title">Trailer</h2>
+                <video
+                  className="rawg-detail__trailer"
+                  src={game.trailerUrl}
+                  controls
+                  preload="metadata"
+                  poster={heroImage ?? undefined}
+                >
+                  Votre navigateur ne prend pas en charge la video.
+                </video>
+              </section>
+            )}
+
+            {game.pcRequirements && (
+              <GameRequirementsPanel requirements={game.pcRequirements} />
+            )}
+
+            {game.metacriticPlatforms.length > 0 && (
+              <section className="rawg-detail__panel">
+                <h2 className="rawg-detail__panel-title">
+                  Metacritic par plateforme
+                </h2>
+                <ul className="rawg-detail__mc-list">
+                  {game.metacriticPlatforms.map((entry) => (
+                    <li key={entry.platform} className="rawg-detail__mc-item">
+                      {entry.url ? (
+                        <a
+                          href={entry.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rawg-detail__mc-link"
+                        >
+                          <span>{entry.platform}</span>
+                          <MetacriticBadge score={entry.score} />
+                        </a>
+                      ) : (
+                        <>
+                          <span>{entry.platform}</span>
+                          <MetacriticBadge score={entry.score} />
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {(hasDlc || hasSuggested) && (
+              <section className="rawg-detail__panel">
+                <h2 className="rawg-detail__panel-title">Univers du jeu</h2>
+                {hasDlc && (
+                  <div className="rawg-detail__related-block">
+                    <h3 className="rawg-detail__related-title">
+                      Jeu principal et extensions
                     </h3>
-                    <div className="overflow-x-auto pb-2">
-                      <RelatedGamesTree
-                        root={game.additionsTree}
+                    {hasDlcTree && game.additionsTree && (
+                      <div className="rawg-detail__related-scroll">
+                        <RelatedGamesTree
+                          root={game.additionsTree}
+                          currentGameId={game.id}
+                        />
+                      </div>
+                    )}
+                    {showUniverseGrid && (
+                      <SuggestedGamesGrid
+                        games={game.universeGames}
                         currentGameId={game.id}
                       />
-                    </div>
-                  </section>
+                    )}
+                  </div>
                 )}
-
-                {hasAdditions && hasSuggested && <Separator />}
-
+                {hasDlc && hasSuggested && (
+                  <hr className="rawg-detail__related-divider" />
+                )}
                 {hasSuggested && (
-                  <section aria-labelledby="suggested-heading">
-                    <h3
-                      id="suggested-heading"
-                      className="mb-4 text-sm font-semibold text-foreground"
-                    >
+                  <div className="rawg-detail__related-block">
+                    <h3 className="rawg-detail__related-title">
                       Jeux similaires
                     </h3>
                     <SuggestedGamesGrid
                       games={game.suggestedGames}
                       currentGameId={game.id}
                     />
-                  </section>
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </section>
+            )}
+
+            {game.achievements.length > 0 && (
+              <section className="rawg-detail__panel">
+                <h2 className="rawg-detail__panel-title">Achievements</h2>
+                {game.achievements.map((achievement) => (
+                  <AchievementBar
+                    key={achievement.id}
+                    name={achievement.name}
+                    description={achievement.description}
+                    percent={achievement.percent}
+                  />
+                ))}
+              </section>
+            )}
+          </div>
+
+          <aside className="rawg-detail__aside">
+            <div className="rawg-detail__buy-card">
+              {game.imageUrl ? (
+                <img
+                  src={game.imageUrl}
+                  alt={game.name}
+                  className="rawg-detail__cover"
+                  width={320}
+                  height={180}
+                />
+              ) : (
+                <div className="rawg-detail__cover rawg-detail__cover--empty">
+                  Pas d&apos;image
+                </div>
+              )}
+
+              <div className="rawg-detail__scores">
+                <div className="rawg-detail__score-box">
+                  <span className="rawg-detail__score-label">
+                    <Star className="size-3.5" aria-hidden />
+                    Note RAWG
+                  </span>
+                  <span className="rawg-detail__score-value">
+                    {game.rating.toFixed(1)}
+                    <small>/5</small>
+                  </span>
+                  <span className="rawg-detail__score-meta">
+                    {game.ratingsCount.toLocaleString('fr-FR')} avis
+                  </span>
+                </div>
+                {game.metacritic !== null && (
+                  <div className="rawg-detail__score-box rawg-detail__score-box--mc">
+                    <span className="rawg-detail__score-label">Metacritic</span>
+                    <MetacriticBadge
+                      score={game.metacritic}
+                      size="lg"
+                      showLabel
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="rawg-detail__favorite-wrap">
+                <FavoriteButton
+                  game={{
+                    id: game.id,
+                    name: game.name,
+                    imageUrl: game.imageUrl,
+                  }}
+                />
+              </div>
+
+              <dl className="rawg-detail__meta">
+                <div className="rawg-detail__meta-row">
+                  <dt>Sortie</dt>
+                  <dd>{formatReleaseDate(game.released)}</dd>
+                </div>
+                <div className="rawg-detail__meta-row">
+                  <dt>
+                    <Clock className="size-3.5" aria-hidden />
+                    Duree moyenne
+                  </dt>
+                  <dd>{game.playtime} h</dd>
+                </div>
+                {game.esrbRating && (
+                  <div className="rawg-detail__meta-row">
+                    <dt>Classification</dt>
+                    <dd>{game.esrbRating}</dd>
+                  </div>
+                )}
+              </dl>
+
+              {game.platforms.length > 0 && (
+                <div className="rawg-detail__aside-block rawg-detail__aside-block--platforms">
+                  <h3 className="rawg-detail__aside-title">Plateformes</h3>
+                  <div className="rawg-detail__tags">
+                    {game.platforms.map((platform) => (
+                      <span key={platform} className="rawg-detail__tag">
+                        {platform}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(game.developers.length > 0 || game.publishers.length > 0) && (
+                <div className="rawg-detail__aside-block rawg-detail__aside-block--studios">
+                  <h3 className="rawg-detail__aside-title">Studios</h3>
+                  <ul className="rawg-detail__companies">
+                    {game.developers.map((studio) => (
+                      <li key={`dev-${String(studio.id)}`}>
+                        Dev. {studio.name}
+                      </li>
+                    ))}
+                    {game.publishers.map((publisher) => (
+                      <li key={`pub-${String(publisher.id)}`}>
+                        Ed.{' '}
+                        <Link
+                          to={`/publisher/${String(publisher.id)}`}
+                          className="rawg-detail__company-link"
+                        >
+                          {publisher.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {game.tags.length > 0 && (
+                <div className="rawg-detail__aside-block rawg-detail__aside-block--tags">
+                  <h3 className="rawg-detail__aside-title">Tags</h3>
+                  <div className="rawg-detail__tags rawg-detail__tags--compact">
+                    {visibleTags.map((tag) => (
+                      <span key={tag} className="rawg-detail__tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  {game.tags.length > TAGS_PREVIEW && (
+                    <button
+                      type="button"
+                      className="rawg-detail__expand-btn"
+                      onClick={() => setTagsExpanded((value) => !value)}
+                    >
+                      {tagsExpanded
+                        ? 'Moins de tags'
+                        : `+ ${String(game.tags.length - TAGS_PREVIEW)} tags`}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       </div>
-    </div>
+    </article>
   )
 }
 
 export function GameDetailPage() {
-  const { identifier } = useParams<{ identifier: string }>()
-  const { data: game, isLoading, isError, error } = useGameDetail(identifier)
+  const { id } = useParams<{ id: string }>()
+  const { data: game, isLoading, isError, error } = useGameDetail(id)
 
-  if (!identifier) {
+  if (!id) {
     return (
       <Alert>
         <AlertCircle />
-        <AlertTitle>Paramètre manquant</AlertTitle>
+        <AlertTitle>Parametre manquant</AlertTitle>
         <AlertDescription>
-          Aucun identifiant de jeu n&apos;a été fourni dans l&apos;URL.
+          Aucun identifiant de jeu n&apos;a ete fourni.
         </AlertDescription>
       </Alert>
     )
   }
 
   if (isLoading) {
-    return <GameDetailSkeleton />
+    return (
+      <p className="rawg-games__status rawg-detail__loading" role="status">
+        Chargement du jeu...
+      </p>
+    )
   }
 
   if (isError) {
-    const isNotFound =
-      error instanceof ApiError && error.status === 404
+    const isNotFound = error instanceof ApiError && error.status === 404
     return (
-      <div className="space-y-4">
+      <div className="rawg-detail__error">
         <Alert variant="destructive">
           <AlertCircle />
           <AlertTitle>
@@ -294,19 +400,15 @@ export function GameDetailPage() {
           </AlertTitle>
           <AlertDescription>
             {isNotFound
-              ? `Aucun jeu ne correspond à « ${identifier} ».`
-              : 'Impossible de charger les données. Réessayez plus tard.'}
+              ? `Aucun jeu ne correspond a l'identifiant ${id}.`
+              : 'Impossible de charger les donnees.'}
           </AlertDescription>
         </Alert>
         <Link
-          to="/games"
-          className={cn(
-            buttonVariants({ variant: 'outline' }),
-            'inline-flex items-center gap-1.5',
-          )}
+          to="/"
+          className={cn(buttonVariants({ variant: 'outline' }), 'rawg-detail__back')}
         >
-          <ArrowLeft className="size-4" aria-hidden />
-          Retour à la liste
+          Retour a l&apos;accueil
         </Link>
       </div>
     )
@@ -316,5 +418,5 @@ export function GameDetailPage() {
     return null
   }
 
-  return <GameDetailContent game={game} />
+  return <GameDetailView game={game} />
 }

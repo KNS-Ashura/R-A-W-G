@@ -1,0 +1,20 @@
+.rawg-favorites__header {
+  margin-bottom: 1.5rem;
+}
+
+.rawg-favorites__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.rawg-favorites__empty {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in oklch, var(--muted) 30%, transparent);
+  padding: 2rem;
+  text-align: center;
+}
+
+.rawg-favorites__empty-text {
+  color: var(--muted-foreground);
+}

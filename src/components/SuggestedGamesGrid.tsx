@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { GameListItem } from '@/api/types'
-import { cn } from '@/lib/utils'
+import type { GameListItem } from '@/services/types'
 
 type SuggestedGamesGridProps = {
   games: GameListItem[]
@@ -16,38 +15,33 @@ export function SuggestedGamesGrid({
   }
 
   return (
-    <ul className="grid list-none grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-3 p-0">
+    <ul className="rawg-related__suggested">
       {games.map((game) => {
         const isCurrent = game.id === currentGameId
         return (
           <li key={game.id}>
             <Link
               to={`/games/${String(game.id)}`}
-              className={cn(
-                'flex flex-col overflow-hidden rounded-lg border bg-card transition-colors',
+              className={
                 isCurrent
-                  ? 'border-primary ring-2 ring-primary/20'
-                  : 'hover:border-primary/50',
-              )}
+                  ? 'rawg-related__suggested-card rawg-related__card--current'
+                  : 'rawg-related__suggested-card'
+              }
               aria-current={isCurrent ? 'page' : undefined}
             >
               {game.imageUrl ? (
                 <img
                   src={game.imageUrl}
                   alt={game.name}
-                  className="aspect-video w-full object-cover"
+                  className="rawg-related__img"
                   width={160}
                   height={90}
                   loading="lazy"
                 />
               ) : (
-                <span className="flex aspect-video items-center justify-center bg-muted text-xs text-muted-foreground">
-                  ?
-                </span>
+                <span className="rawg-related__placeholder">?</span>
               )}
-              <span className="line-clamp-2 p-2 text-xs font-medium">
-                {game.name}
-              </span>
+              <span className="rawg-related__name">{game.name}</span>
             </Link>
           </li>
         )
